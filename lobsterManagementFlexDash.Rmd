@@ -35,7 +35,7 @@ lobPoly <- readOGR(dsn="LobsterManagementAreas.shp",layer="LobsterManagementArea
 
 ```{r}
 
-includeScript("gomap.js")
+
 fillCol(height = 600,flex = 1,
   leafletOutput('map', width = "100%", height="100%")
 )
