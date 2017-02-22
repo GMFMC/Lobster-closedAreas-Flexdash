@@ -1,0 +1,188 @@
+---
+title: "Spiny Lobster Management"
+resource_files:
+- LobsterManagementAreas.cpg
+- LobsterManagementAreas.shx
+- LobsterManagementAreas.dbf
+- LobsterManagementAreas.prj
+- LobsterManagementAreas.sbn
+- LobsterManagementAreas.sbx
+- LobsterManagementAreas.shp.xml
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    social: menu
+    source_code: embed
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(devtools)
+library(leaflet)
+library(highcharter)
+library(markdown)
+library(shiny)
+library(rgdal)
+# devtools::install_github("rstudio/flexdashboard", ref="bugfix/dashboard-init-after-body")
+
+lobPoly <- readOGR(dsn="LobsterManagementAreas.shp",layer="LobsterManagementAreas")
+```
+
+<!-- Column {data-width=650} -->
+<!----------------------------------------------------------------------->
+
+### Lobster Trap Closed Areas
+
+```{r}
+
+includeScript("gomap.js")
+fillCol(height = 600,flex = 1,
+  leafletOutput('map', width = "100%", height="100%")
+)
+
+tags$script('
+              $(document).ready(function () {
+
+                function getLocation(callback){
+                var options = {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+                };
+
+                navigator.geolocation.getCurrentPosition(onSuccess, onError);
+
+                function onError (err) {
+                Shiny.onInputChange("geolocation", false);
+                }
+
+                function onSuccess (position) {
+                setTimeout(function () {
+                var coords = position.coords;
+                var timestamp = new Date();
+
+                console.log(coords.latitude + ", " + coords.longitude, "," + coords.accuracy);
+                Shiny.onInputChange("geolocation", true);
+                Shiny.onInputChange("lat", coords.latitude);
+                Shiny.onInputChange("long", coords.longitude);
+                Shiny.onInputChange("accuracy", coords.accuracy);
+                Shiny.onInputChange("time", timestamp)
+
+                console.log(timestamp);
+
+                if (callback) {
+                callback();
+                }
+                }, 1100)
+                }
+                }
+
+                var TIMEOUT = 100000; //SPECIFY
+                var started = false;
+                function getLocationRepeat(){
+                //first time only - no delay needed
+                if (!started) {
+                started = true;
+                getLocation(getLocationRepeat);
+                return;
+                }
+
+                setTimeout(function () {
+                getLocation(getLocationRepeat);
+                }, TIMEOUT);
+
+                };
+
+                getLocationRepeat();
+
+                });
+                ')
+verbatimTextOutput("lat")
+verbatimTextOutput("long")
+verbatimTextOutput("geolocation")
+verbatimTextOutput("accuracy")
+
+output$map <- renderLeaflet({  
+
+  
+       map <- leaflet() %>% 
+     
+            addTiles('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+               options = providerTileOptions(noWrap = TRUE)) %>%
+      addTiles('http://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/Mapserver/tile/{z}/{y}/{x}',
+               options = providerTileOptions(noWrap = TRUE)) %>%
+
+                 setView(-79.61663461, 27.7623829, zoom = 6) %>% 
+         addPolygons(data=lobPoly, color="yellow",stroke=FALSE, fillOpacity=1.0)
+       })
+
+output$lat <- renderPrint({
+    input$lat
+  }) ## renderPrint
+
+  output$long <- renderPrint({
+    input$long
+  }) ## renderPrint
+
+  output$geolocation <- renderPrint({
+    input$geolocation
+  }) ## renderPrint
+
+  output$accuracy <- renderPrint({
+    input$accuracy
+  })
+
+  output$time <- renderPrint({
+    input$time
+  })
+
+  ###observer to change map based on location##
+
+  observe({
+    if(!is.null(input$lat)){
+      map <- leafletProxy("map")
+      dist <- 0.5
+      lat <- input$lat
+      lng <- input$long
+      map %>% fitBounds(lng - dist, lat - dist, lng + dist, lat + dist) %>%
+      #addMarkers(-81.41, 26.15) %>%
+        addMarkers(lng,lat) %>%
+        addRectangles(lng1=  -82.517131, lat1=27.963717,
+                      lng2=-82.511541, lat2=27.959590,
+                      fillColor="#dd1c77", fillOpacity = 1,
+                      color = "#dd1c77") %>%
+        addRectangles(lng1=  -82.635620, lat1=27.956195,
+                      lng2=-82.597855, lat2=27.932922,
+                      fillColor="#dd1c77", fillOpacity = 1,
+                      color = "#dd1c77")
+    }
+  })
+
+
+```
+
+<!--Column {data-width=350}-->
+<!----------------------------------------------------------------------->
+
+<!--### Lobster Trap Closed Areas {.mobile}
+```{r}
+fillCol(height = 600,flex = 1,
+  leafletOutput('map2', width = "100%", height="100%")
+)
+
+output$map2 <- renderLeaflet({  
+
+  
+       map2 <- leaflet() %>% 
+     
+            addTiles('http://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}',
+                     options = list(providerTileOptions(noWrap = TRUE)) ) %>%
+
+                 setView(-79.61663461, 27.7623829, zoom = 6)})
+  
+
+```
+-->
+
+
+
