@@ -1,13 +1,7 @@
 ---
 title: "Spiny Lobster Management"
 resource_files:
-- LobsterManagementAreas.cpg
-- LobsterManagementAreas.shx
-- LobsterManagementAreas.dbf
-- LobsterManagementAreas.prj
-- LobsterManagementAreas.sbn
-- LobsterManagementAreas.sbx
-- LobsterManagementAreas.shp.xml
+- spiny.png
 runtime: shiny
 output:
   flexdashboard::flex_dashboard:
@@ -23,114 +17,82 @@ library(highcharter)
 library(markdown)
 library(shiny)
 library(rgdal)
+library(maptools)
+library(leaflet.esri)
 # devtools::install_github("rstudio/flexdashboard", ref="bugfix/dashboard-init-after-body")
 
-lobPoly <- readOGR(dsn="LobsterManagementAreas.shp",layer="LobsterManagementAreas")
-proj4string(lobPoly) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-
-geoTest <- readOGR(dsn="geoTest.shp",layer="geoTest")
-proj4string(geoTest) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+# lobPoly <- readOGR(dsn="LobsterManagementAreas.shp",layer="LobsterManagementAreas")
+# proj4string(lobPoly) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+# 
+# buffPoly <- readOGR(dsn="clippedBuffer_UTM.shp",layer="clippedBuffer_UTM")
+# buffPoly<- spTransform(buffPoly,CRS("+init=epsg:4326"))
+# proj4string(buffPoly) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+# 
+# both <- readOGR(dsn="bufferClosedAreas_UTM.shp",layer="bufferClosedAreas_UTM")
+# both<- spTransform(both,CRS("+init=epsg:4326"))
+# proj4string(both) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+# 
+# geoTest <- readOGR(dsn="geoTest.shp",layer="geoTest")
+# geoTest<- spTransform(geoTest,CRS("+init=epsg:4326"))
+# proj4string(geoTest) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+# 
+# buff <- readOGR(dsn="geoTestBuffDif.shp",layer="geoTestBuffDif")
+# buff<- spTransform(buff,CRS("+init=epsg:4326"))
+# proj4string(buff) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+# basemaps <- esriBasemapLayers
+# #both <- spRbind(geoTest,buff)
+# 
+# both <- readOGR(dsn="merge2.shp",layer="merge2")
+# proj4string(both) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+load("lobsterPolygons.RData")
 ```
 
 <!-- Column {data-width=650} -->
 <!----------------------------------------------------------------------->
 
-### Lobster Trap Closed Areas
+### Lobster Trap Closed Areas 
 
 ```{r}
+#actionButton('do',"Find ME")
+#tableOutput('table')
+ #fillCol(height = 600,flex = 1,
+  leafletOutput('map',height=460,width=460)#,
+  # absolutePanel(id = "controls", class = "panel panel-default", fixed = FALSE,
+  #                        draggable = TRUE, top = 100, left = "auto", right = 20, bottom = "auto",
+  #                        width = 230, height = "auto",
+  #             wellPanel(actionButton('do',"Find ME"))
+#)#)
+
+## script includes necessary geolocation code ##
+#includeScript('geoloc.js')
+#includeScript('geoloc2.js')
+includeHTML('modalHTML2.html')
+includeScript('modalJS.js')
+#includeCSS('modalCSS.css')
+#includeHTML('button.html')
 
 
-fillCol(height = 600,flex = 1,
-  leafletOutput('map', width = "100%", height="100%")
-)
-
-tags$script('
-              $(document).ready(function () {
-
-                function getLocation(callback){
-                var options = {
-                enableHighAccuracy: true,
-                timeout: 5000,
-                maximumAge: 0
-                };
-
-                navigator.geolocation.getCurrentPosition(onSuccess, onError);
-
-                function onError (err) {
-                Shiny.onInputChange("geolocation", false);
-                }
-
-                function onSuccess (position) {
-                setTimeout(function () {
-                var coords = position.coords;
-                var timestamp = new Date();
-
-                console.log(coords.latitude + ", " + coords.longitude, "," + coords.accuracy);
-                Shiny.onInputChange("geolocation", true);
-                Shiny.onInputChange("lat", coords.latitude);
-                Shiny.onInputChange("long", coords.longitude);
-                Shiny.onInputChange("accuracy", coords.accuracy);
-                Shiny.onInputChange("time", timestamp)
-
-                console.log(timestamp);
-
-                if (callback) {
-                callback();
-                }
-                }, 1100)
-                }
-                }
-
-                var TIMEOUT = 100000; //SPECIFY
-                var started = false;
-                function getLocationRepeat(){
-                //first time only - no delay needed
-                if (!started) {
-                started = true;
-                getLocation(getLocationRepeat);
-                return;
-                }
-
-                setTimeout(function () {
-                getLocation(getLocationRepeat);
-                }, TIMEOUT);
-
-                };
-
-                getLocationRepeat();
-
-                });
-                ')
-verbatimTextOutput("lat")
-verbatimTextOutput("long")
-verbatimTextOutput("geolocation")
-verbatimTextOutput("accuracy")
+###### render basemap #####
 
 output$map <- renderLeaflet({  
-
-  
-       map <- leaflet() %>% 
-     
-            addTiles('http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-               options = providerTileOptions(noWrap = TRUE)) %>%
-      addTiles('http://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/Mapserver/tile/{z}/{y}/{x}',
-               options = providerTileOptions(noWrap = TRUE)) %>%
-
-                 setView(-79.61663461, 27.7623829, zoom = 6) %>% 
-         #addPolygons(data=lobPoly, color="yellow",stroke=FALSE, fillOpacity=1.0,layerId=~ET_ID)
-         addPolygons(data=geoTest, color="yellow",stroke=FALSE, fillOpacity=1.0,layerId=~id)
+  l <- leaflet() %>% setView(-81, 25, zoom = 9) %>% 
+        addEsriBasemapLayer(esriBasemapLayers$Imagery) %>%
+        addMiniMap(tiles="Esri.WorldImagery") %>% 
+        addPolygons(data=lobPoly, color="yellow",stroke=FALSE,fillOpacity=1.0,layerId=~ET_ID) %>% 
+        #addPolygons(data=buff,color='green', stroke = FALSE, fillOpacity=1.0,layerId=~id) %>% 
+        addLegend(position='bottomleft',colors='yellow', labels='Spiny Lobster Closed Areas',opacity=1.0) %>% 
+        addControlGPS()
+        # addControl(
+        #   actionButton('do',"Find ME")
+        # )
        })
 
-observe({
-  geo <- input$geolocation
+#### subsets closed areas by geolocated lat/long points ####
+closed <- reactive({
+  lat <- input$map_gps_located$coordinates$lat
+  lon <- input$map_gps_located$coordinates$lng
   
-  if (is.null(geo))
-    return ()
-  
-  lat <- input$lat
-  lon <- input$long
-
-      #puts lat and lon for click point into its own data frame
+  #puts lat and lon for click point into its own data frame
       coords <- as.data.frame(cbind(lon, lat))
 
       #converts click point coordinate data frame into SP object, sets CRS
@@ -138,131 +100,470 @@ observe({
       proj4string(point) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
       #retrieves country in which the click point resides, set CRS for country
-      selected <- geoTest[point,]
+      selected <- lobPoly[point,]
       proj4string(selected) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-
-      proxy <- leafletProxy("map")
-      if(geoTest$id == "Selected"){
-        proxy %>% removeShape(layerId = "Selected")
-      } else {
-        proxy %>% addPolygons(data = selected,
-                              fillColor = "red",
-                              fillOpacity = 1,
-                              color = "red",
-
-                              stroke = FALSE,
-                              layerId = "Selected")
-      }
-  
-  
-  
-  
-  
-  
+      
+      selected
 })
 
-# observeEvent(input$map_shape_click, {
-#       click <- input$map_shape_click
-# 
-#       if(is.null(click))
-#         return()
-# 
-#       #pulls lat and lon from shiny click event
-#       lat <- click$lat
-#       lon <- click$lng
-# 
-#       #puts lat and lon for click point into its own data frame
-#       coords <- as.data.frame(cbind(lon, lat))
-# 
-#       #converts click point coordinate data frame into SP object, sets CRS
-#       point <- SpatialPoints(coords)
-#       proj4string(point) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-# 
-#       #retrieves country in which the click point resides, set CRS for country
-#       selected <- lobPoly[point,]
-#       proj4string(selected) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
-# 
-#       proxy <- leafletProxy("map")
-#       if(click$id == "Selected"){
-#         proxy %>% removeShape(layerId = "Selected")
-#       } else {
-#         proxy %>% addPolygons(data = selected,
-#                               fillColor = "red",
-#                               fillOpacity = 1,
-#                               color = "red",
-# 
-#                               stroke = FALSE,
-#                               layerId = "Selected")
-#       }
-#     })
+#### subsets buffered area by geolocated lat/long points ###
 
-output$lat <- renderPrint({
-    input$lat
-  }) ## renderPrint
+buffer <- reactive({
+  lat <- input$map_gps_located$coordinates$lat
+  lon <- input$map_gps_located$coordinates$lng
+  
+  #puts lat and lon for click point into its own data frame
+      coords <- as.data.frame(cbind(lon, lat))
 
-  output$long <- renderPrint({
-    input$long
-  }) ## renderPrint
+      #converts click point coordinate data frame into SP object, sets CRS
+      point <- SpatialPoints(coords)
+      proj4string(point) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
-  output$geolocation <- renderPrint({
-    input$geolocation
-  }) ## renderPrint
+      #retrieves country in which the click point resides, set CRS for country
+      selected <- buffPoly[point,]
+      proj4string(selected) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+      
+      selected
+})
 
-  output$accuracy <- renderPrint({
-    input$accuracy
-  })
+notclosed <- reactive({
+  lat <- input$map_gps_located$coordinates$lat
+  lon <- input$map_gps_located$coordinates$lng
+  
+  #puts lat and lon for click point into its own data frame
+      coords <- as.data.frame(cbind(lon, lat))
 
-  output$time <- renderPrint({
-    input$time
-  })
+      #converts click point coordinate data frame into SP object, sets CRS
+      point <- SpatialPoints(coords)
+      proj4string(point) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
-  ###observer to change map based on location##
+      #retrieves country in which the click point resides, set CRS for country
+      selected <- both[point,]
+      proj4string(selected) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+      
+      selected
+})
 
-  observe({
-    if(!is.null(input$lat)){
-      map <- leafletProxy("map")
-      dist <- 0.5
-      lat <- input$lat
-      lng <- input$long
-      map %>% fitBounds(lng - dist, lat - dist, lng + dist, lat + dist) %>%
-      #addMarkers(-81.41, 26.15) %>%
-        addMarkers(lng,lat) #%>%
-        # addRectangles(lng1=  -82.517131, lat1=27.963717,
-        #               lng2=-82.511541, lat2=27.959590,
-        #               fillColor="#dd1c77", fillOpacity = 1,
-        #               color = "#dd1c77") %>%
-        # addRectangles(lng1=  -82.635620, lat1=27.956195,
-        #               lng2=-82.597855, lat2=27.932922,
-        #               fillColor="#dd1c77", fillOpacity = 1,
-        #               color = "#dd1c77")
-    }
-  })
+#### projects geolocated coordinates in a dataframe ###############
+
+LatLong <- reactive({
+  lat <- input$map_gps_located$coordinates$lat
+  lon <- input$map_gps_located$coordinates$lng
+  
+  #puts lat and lon for click point into its own data frame
+      coords <- as.data.frame(cbind(lon, lat))
+
+      coords
+})
 
 
-```
+ ####### Observer changes closed area polygon color if user's geolocation is inside polygon #######
+observe({
+  geo <- input$map_gps_located
 
-<!--Column {data-width=350}-->
-<!----------------------------------------------------------------------->
+  if (is.null(geo))
+    return ()
 
-<!--### Lobster Trap Closed Areas {.mobile}
-```{r}
-fillCol(height = 600,flex = 1,
-  leafletOutput('map2', width = "100%", height="100%")
+  
+      proxy <- leafletProxy("map",data=closed())
+      if(nrow(closed())<1){
+        proxy %>% removeShape(layerId = "Selected") 
+        
+      } else {
+        proxy %>% addPolygons(data = closed(),
+                              fillColor = "#e7298a",
+                              fillOpacity = 1,
+                              color = "#e7298a",
+                              stroke = FALSE,
+                              layerId = "Selected") 
+          
+      }
+      
+
+ })
+
+####### Observer changes buffer area polygon color if user's geolocation is inside polygon #######
+
+observe({
+  geo <- input$map_gps_located
+
+  if (is.null(geo))
+    return ()
+
+  
+      proxy <- leafletProxy("map",data=buffer())
+      if(nrow(buffer())<1){
+        proxy %>% removeShape(layerId = "Selected2") 
+        
+      } else {
+        proxy %>% addPolygons(data = buffer(),
+                              fillColor = "#a87000",
+                              fillOpacity = 1,
+                              color = "#a87000",
+                              stroke = FALSE,
+                              layerId = "Selected2") 
+          
+      }
+      
+
+ })
+
+####### Observer generates warning popup if user's geolocation is within a closed area polygon #######
+
+observe({
+  geo <- input$map_gps_located
+
+  if (is.null(geo))
+    return ()
+  
+    content <- paste(sep = "<br/>",
+  "<b>Warning:</b>",
+  "You are in a closed area.",
+  "Trap fishing for spiny lobster is not allowed here.",
+  "<a href='http://sero.nmfs.noaa.gov/maps_gis_data/fisheries/gom/documents/lobster_trap.txt' target='_blank'>Federal regulations</a>"
+                              
 )
 
-output$map2 <- renderLeaflet({  
+      proxy <- leafletProxy("map",data=closed())
+      if(nrow(closed())<1){
+        proxy %>% removePopup(layerId = "popup1")
 
-  
-       map2 <- leaflet() %>% 
-     
-            addTiles('http://server.arcgisonline.com/ArcGIS/rest/services/Ocean_Basemap/MapServer/tile/{z}/{y}/{x}',
-                     options = list(providerTileOptions(noWrap = TRUE)) ) %>%
+      } else {
+        proxy %>% addPopups(lng=LatLong()$lon,lat=LatLong()$lat, content,
+                              layerId='popup1')
 
-                 setView(-79.61663461, 27.7623829, zoom = 6)})
+      }
+
+
+ })
+
+####### Observer generates warning popup if user's geolocation is within a buffer area polygon #######
+
+observe({
+  geo <- input$map_gps_located
+
+  if (is.null(geo))
+    return ()
   
+    content <- paste(sep = "<br/>",
+  "<b>Warning:</b>",
+  "You are within 1km of a closed area"
+  
+)
+
+      proxy <- leafletProxy("map",data=buffer())
+        if(nrow(buffer())<1){
+        proxy %>% removePopup(layerId = "popup2")
+
+      } else {
+        proxy %>% addPopups(lng=LatLong()$lon,lat=LatLong()$lat, content,
+                              layerId='popup2')
+
+      }
+
+
+ })
+
+####### Observer generates popup if user's geolocation is NOT within a closed area/buffer polygon #######
+
+observe({
+  geo <- input$map_gps_located
+
+  if (is.null(geo))
+    return ()
+  
+    content <- paste(sep = "<br/>",
+  "<b>Congrats!</b>",
+  "You aren't in a closed area."
+  
+)
+
+      proxy <- leafletProxy("map",data=notclosed())
+      if(nrow(notclosed())>=1){
+        proxy %>% removePopup(layerId = "popup3")
+
+      } else {
+        proxy %>% addPopups(lng=LatLong()$lon,lat=LatLong()$lat, content,
+                              layerId='popup3')
+
+      }
+
+
+ })
+
+
+#### updates map bounds based on user's geolocation and add a marker at user's location ###
+  # observeEvent(input$do,{
+  #   if(!is.null(input$map_gps_located)){
+  #     map <- leafletProxy("map")
+  #     dist <- 0.5
+  #     lat <- input$lat
+  #     lng <- input$long
+  #     map %>% fitBounds(lng - dist, lat - dist, lng + dist, lat + dist) %>%
+  #     addMarkers(lng,lat) #%>%
+  # 
+  #   }
+  # })
+  
+  #output$table <- renderTable(notclosed())
+
 
 ```
--->
+
+<!-- ### Lobster Trap Closed Areas {.mobile} -->
+
+<!-- ```{r} -->
+<!-- #actionButton('do',"Find ME") -->
+<!-- #tableOutput('table') -->
+<!--  #fillCol(height = 600,flex = 1, -->
+<!--   leafletOutput('map.m',height=460,width=460)#, -->
+<!--   # absolutePanel(id = "controls", class = "panel panel-default", fixed = FALSE, -->
+<!--   #                        draggable = TRUE, top = 100, left = "auto", right = 20, bottom = "auto", -->
+<!--   #                        width = 230, height = "auto", -->
+<!--   #             wellPanel(actionButton('do',"Find ME")) -->
+<!-- #)#) -->
+
+<!-- ## script includes necessary geolocation code ## -->
+<!-- #includeScript('geoloc.js') -->
+<!-- #includeScript('geoloc2.js') -->
+<!-- includeHTML('modalHTML2.html') -->
+<!-- includeScript('modalJS.js') -->
+<!-- #includeCSS('modalCSS.css') -->
+<!-- #includeHTML('button.html') -->
 
 
+<!-- ###### render basemap ##### -->
 
+<!-- output$map.m <- renderLeaflet({   -->
+<!--   l <- leaflet() %>% setView(-81, 25, zoom = 9) %>%  -->
+<!--         addEsriBasemapLayer(esriBasemapLayers$Imagery) %>% -->
+<!--         #addMiniMap(tiles="Esri.WorldImagery") %>%  -->
+<!--         addPolygons(data=lobPoly, color="yellow",stroke=FALSE,fillOpacity=1.0,layerId=~ET_ID) %>%  -->
+<!--         #addPolygons(data=buff,color='green', stroke = FALSE, fillOpacity=1.0,layerId=~id) %>%  -->
+<!--         addLegend(position='bottomleft',colors='yellow', labels='Spiny Lobster Closed Areas',opacity=1.0) %>%  -->
+<!--         addControlGPS() -->
+<!--         # addControl( -->
+<!--         #   actionButton('do',"Find ME") -->
+<!--         # ) -->
+<!--        }) -->
+
+<!-- #### subsets closed areas by geolocated lat/long points #### -->
+<!-- closed <- reactive({ -->
+<!--   lat <- input$map.m_gps_located$coordinates$lat -->
+<!--   lon <- input$map.m_gps_located$coordinates$lng -->
+
+<!--   #puts lat and lon for click point into its own data frame -->
+<!--       coords <- as.data.frame(cbind(lon, lat)) -->
+
+<!--       #converts click point coordinate data frame into SP object, sets CRS -->
+<!--       point <- SpatialPoints(coords) -->
+<!--       proj4string(point) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs") -->
+
+<!--       #retrieves country in which the click point resides, set CRS for country -->
+<!--       selected <- lobPoly[point,] -->
+<!--       proj4string(selected) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs") -->
+
+<!--       selected -->
+<!-- }) -->
+
+<!-- #### subsets buffered area by geolocated lat/long points ### -->
+
+<!-- buffer <- reactive({ -->
+<!--   lat <- input$map.m_gps_located$coordinates$lat -->
+<!--   lon <- input$map.m_gps_located$coordinates$lng -->
+
+<!--   #puts lat and lon for click point into its own data frame -->
+<!--       coords <- as.data.frame(cbind(lon, lat)) -->
+
+<!--       #converts click point coordinate data frame into SP object, sets CRS -->
+<!--       point <- SpatialPoints(coords) -->
+<!--       proj4string(point) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs") -->
+
+<!--       #retrieves country in which the click point resides, set CRS for country -->
+<!--       selected <- buffPoly[point,] -->
+<!--       proj4string(selected) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs") -->
+
+<!--       selected -->
+<!-- }) -->
+
+<!-- notclosed <- reactive({ -->
+<!--   lat <- input$map.m_gps_located$coordinates$lat -->
+<!--   lon <- input$map.m_gps_located$coordinates$lng -->
+
+<!--   #puts lat and lon for click point into its own data frame -->
+<!--       coords <- as.data.frame(cbind(lon, lat)) -->
+
+<!--       #converts click point coordinate data frame into SP object, sets CRS -->
+<!--       point <- SpatialPoints(coords) -->
+<!--       proj4string(point) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs") -->
+
+<!--       #retrieves country in which the click point resides, set CRS for country -->
+<!--       selected <- both[point,] -->
+<!--       proj4string(selected) <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs") -->
+
+<!--       selected -->
+<!-- }) -->
+
+<!-- #### projects geolocated coordinates in a dataframe ############### -->
+
+<!-- LatLong <- reactive({ -->
+<!--   lat <- input$map.m_gps_located$coordinates$lat -->
+<!--   lon <- input$map.m_gps_located$coordinates$lng -->
+
+<!--   #puts lat and lon for click point into its own data frame -->
+<!--       coords <- as.data.frame(cbind(lon, lat)) -->
+
+<!--       coords -->
+<!-- }) -->
+
+
+<!--  ####### Observer changes closed area polygon color if user's geolocation is inside polygon ####### -->
+<!-- observe({ -->
+<!--   geo <- input$map.m_gps_located -->
+
+<!--   if (is.null(geo)) -->
+<!--     return () -->
+
+
+<!--       proxy <- leafletProxy("map.m",data=closed()) -->
+<!--       if(nrow(closed())<1){ -->
+<!--         proxy %>% removeShape(layerId = "Selected")  -->
+
+<!--       } else { -->
+<!--         proxy %>% addPolygons(data = closed(), -->
+<!--                               fillColor = "#e7298a", -->
+<!--                               fillOpacity = 1, -->
+<!--                               color = "#e7298a", -->
+<!--                               stroke = FALSE, -->
+<!--                               layerId = "Selected")  -->
+
+<!--       } -->
+
+
+<!--  }) -->
+
+<!-- ####### Observer changes buffer area polygon color if user's geolocation is inside polygon ####### -->
+
+<!-- observe({ -->
+<!--   geo <- input$map.m_gps_located -->
+
+<!--   if (is.null(geo)) -->
+<!--     return () -->
+
+
+<!--       proxy <- leafletProxy("map.m",data=buffer()) -->
+<!--       if(nrow(buffer())<1){ -->
+<!--         proxy %>% removeShape(layerId = "Selected2")  -->
+
+<!--       } else { -->
+<!--         proxy %>% addPolygons(data = buffer(), -->
+<!--                               fillColor = "#a87000", -->
+<!--                               fillOpacity = 1, -->
+<!--                               color = "#a87000", -->
+<!--                               stroke = FALSE, -->
+<!--                               layerId = "Selected2")  -->
+
+<!--       } -->
+
+
+<!--  }) -->
+
+<!-- ####### Observer generates warning popup if user's geolocation is within a closed area polygon ####### -->
+
+<!-- observe({ -->
+<!--   geo <- input$map.m_gps_located -->
+
+<!--   if (is.null(geo)) -->
+<!--     return () -->
+
+<!--     content <- paste(sep = "<br/>", -->
+<!--   "<b>Warning:</b>", -->
+<!--   "You are in a closed area.", -->
+<!--   "Trap fishing for spiny lobster is not allowed here.", -->
+<!--   "<a href='http://sero.nmfs.noaa.gov/maps_gis_data/fisheries/gom/documents/lobster_trap.txt' target='_blank'>Federal regulations</a>" -->
+
+<!-- ) -->
+
+<!--       proxy <- leafletProxy("map.m",data=closed()) -->
+<!--       if(nrow(closed())<1){ -->
+<!--         proxy %>% removePopup(layerId = "popup1") -->
+
+<!--       } else { -->
+<!--         proxy %>% addPopups(lng=LatLong()$lon,lat=LatLong()$lat, content, -->
+<!--                               layerId='popup1') -->
+
+<!--       } -->
+
+
+<!--  }) -->
+
+<!-- ####### Observer generates warning popup if user's geolocation is within a buffer area polygon ####### -->
+
+<!-- observe({ -->
+<!--   geo <- input$map.m_gps_located -->
+
+<!--   if (is.null(geo)) -->
+<!--     return () -->
+
+<!--     content <- paste(sep = "<br/>", -->
+<!--   "<b>Warning:</b>", -->
+<!--   "You are within 1km of a closed area" -->
+
+<!-- ) -->
+
+<!--       proxy <- leafletProxy("map.m",data=buffer()) -->
+<!--         if(nrow(buffer())<1){ -->
+<!--         proxy %>% removePopup(layerId = "popup2") -->
+
+<!--       } else { -->
+<!--         proxy %>% addPopups(lng=LatLong()$lon,lat=LatLong()$lat, content, -->
+<!--                               layerId='popup2') -->
+
+<!--       } -->
+
+
+<!--  }) -->
+
+<!-- ####### Observer generates popup if user's geolocation is NOT within a closed area/buffer polygon ####### -->
+
+<!-- observe({ -->
+<!--   geo <- input$map.m_gps_located -->
+
+<!--   if (is.null(geo)) -->
+<!--     return () -->
+
+<!--     content <- paste(sep = "<br/>", -->
+<!--   "<b>Congrats!</b>", -->
+<!--   "You aren't in a closed area." -->
+
+<!-- ) -->
+
+<!--       proxy <- leafletProxy("map.m",data=notclosed()) -->
+<!--       if(nrow(notclosed())>=1){ -->
+<!--         proxy %>% removePopup(layerId = "popup3") -->
+
+<!--       } else { -->
+<!--         proxy %>% addPopups(lng=LatLong()$lon,lat=LatLong()$lat, content, -->
+<!--                               layerId='popup3') -->
+
+<!--       } -->
+
+
+<!--  }) -->
+
+
+<!-- #### updates map bounds based on user's geolocation and add a marker at user's location ### -->
+<!--   # observeEvent(input$do,{ -->
+<!--   #   if(!is.null(input$map_gps_located)){ -->
+<!--   #     map <- leafletProxy("map") -->
+<!--   #     dist <- 0.5 -->
+<!--   #     lat <- input$lat -->
+<!--   #     lng <- input$long -->
+<!--   #     map %>% fitBounds(lng - dist, lat - dist, lng + dist, lat + dist) %>% -->
+<!--   #     addMarkers(lng,lat) #%>% -->
+<!--   #  -->
+<!--   #   } -->
+<!--   # }) -->
+
+<!--   #output$table <- renderTable(notclosed()) -->
+<!-- ``` -->

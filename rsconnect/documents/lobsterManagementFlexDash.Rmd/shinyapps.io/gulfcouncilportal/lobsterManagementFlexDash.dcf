@@ -1,0 +1,10 @@
+name: lobsterManagementFlexDash
+account: gulfcouncilportal
+server: shinyapps.io
+appId: 158314
+bundleId: 720692
+url: https://gulfcouncilportal.shinyapps.io/lobsterManagementFlexDash/
+when: 1487780071.69922
+asMultiple: FALSE
+asStatic: FALSE
+additionalFiles: geoTest.cpg|geoTest.dbf|geoTest.prj|geoTest.qpj|geoTest.shx
