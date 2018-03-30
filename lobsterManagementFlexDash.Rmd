@@ -19,6 +19,7 @@ library(shiny)
 library(rgdal)
 library(maptools)
 library(leaflet.esri)
+devtools::install_github("rstudio/rmarkdown")
 # devtools::install_github("rstudio/flexdashboard", ref="bugfix/dashboard-init-after-body")
 
 # lobPoly <- readOGR(dsn="LobsterManagementAreas.shp",layer="LobsterManagementAreas")
@@ -66,8 +67,10 @@ load("lobsterPolygons.RData")
 ## script includes necessary geolocation code ##
 #includeScript('geoloc.js')
 #includeScript('geoloc2.js')
-includeHTML('modalHTML2.html')
-includeScript('modalJS.js')
+## script for splash page ##################
+ includeHTML('modalHTML2.html')
+ includeScript('modalJS.js')
+####################################
 #includeCSS('modalCSS.css')
 #includeHTML('button.html')
 
